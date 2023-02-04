@@ -1,0 +1,299 @@
+---
+title: "Probability and Stadistics 2"
+author: "Sonia Castro"
+date: "18/1/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+setwd("/Users/sonia/Desktop")
+library(ggpubr)
+library(EnvStats)
+library(survival)
+library(Formula)
+library(colorspace)
+library(ggplot2)
+library(carData)
+library(Hmisc)
+library(car)
+library(tables)
+library(lattice)
+library(grid)
+library(gridExtra)
+library(MASS)
+library(latticeExtra)
+library(RColorBrewer)
+library(multcompView)
+library(mvtnorm)
+library(emmeans)
+library(RcmdrMisc)
+library(multcomp)
+library(HH)
+```
+**One wants to compare the evolution in time of the Vitamin C level of an orange juice, as a function of the type of container and the conservation temperature. A combination of container and conservation temperature is denoted as conservation method. Three conservation methods have been considered and denoted by: "a", "b" y "c". For each conservation method, and during 12 consecutive weeks, the level of Vitamin C of two units of orange juice has been analyzed.**
+
+<br>
+
+**It is supposed that the Vitamin C level evolves following the exponential function:** 
+(hem canviat la lletra $\beta$ de l'enunciat per $\gamma$ per no confondrela amb les que utilitzem per definir els models més endevant.)
+
+$$VitaminaC = \alpha_ie^{-\gamma_i·setmana},$$
+**with $\alpha_i>0$ and $\gamma_i > 0$, and that these parameters may depend on the conservation method, indicated by the supscript i.**
+
+<br>
+**1)Perform the descriptive statistics of the dataset. Which are the main conclusions?**
+
+Per entendre millor les dades aplicarem log a la fórmula de la Vitamina C de forma que ens quedi:
+$log(VitaminaC) = log(\alpha_i)-\gamma_isetmana$.
+
+I afegirem la variable Tipus_tractament com a factor.
+
+```{r}
+dades<-read.csv2("/Users/sonia/Desktop/ViTCGroup26.csv")
+head(dades)
+```
+
+```{r}
+#añadimos variable categòrica como factor
+dades$Tipus_tractament<-as.factor(dades$Tractament)
+#canviem la variabe VitaminaC pel seu logarítme
+dades$logVitC<-log(dades$VitaminaC)
+head(dades)
+
+```
+
+```{r}
+scatterplot(dades$logVitC~(dades$Setmana)|dades$Tractament,smooth=F,data=dades)
+```
+
+D'aquest plot es dedueix que entre els tractaments 'b' i 'c' no hi ha interacció, ja que les rectes són paral·leles(tenen el mateix pendent). En canvi si que hi ha interacció amb el model 'a', ja que la pendent és menor. Veiem com el pas de les setmanes sempre disminueix el nivell de Vitamina C. S'aconsegueix mantenir un nivell de Vitamina més alt a la llarga amb el tractament 'a'.
+
+```{r}
+boxplot(dades$logVitC~dades$Tipus_tractament)
+```
+
+Sembla que no hi ha molta diferència entre els nivells de VitaminaC amb els tractaments 'b' i 'c'. Però si amb el nivell de Vitamina C del tractament 'a', que sembla que té una esperança superior i una variabilitat menor. En els tractamnets 'b' i 'c' semblen tenir una variancia semblant tot i que en el tractament b sembla que sigui més probable trobar-se per sota de l'esperança que per sobre i a l'inrevés en el c.
+
+<br>
+**2) If you want to fit a linear model to the data, which is the reasonable response variable? Which are the explanatory variables? Which is the type of the explanatory variables?**
+
+Per crear un model lineal amb les dades aplicarem log a la fórmula de la Vitamina C de forma que ens quedi:
+$$log(VitaminaC) = log(\alpha_i)-\gamma_isetmana$$
+
+De forma que la nostra variable resposta i és el logaritme del nivell de Vitamina C i les variables explicatòries són: el tipus de tractament aplicat ($\alpha_i$ i $\gamma_i$ depenen d'aquest) i la setmana en la que es mesura. El tractament és una variable categòrica de 3 nivells i la setmana és una variable numèrica. 
+
+<br>
+**3) Specify the questions that has sense to answer by means of analyzing the data (at least three).**
+
+- Té alguna influència el tipus de tractament en el nivell de Vitamina C mesurat?
+
+- Té alguna influència la setmana en que es mesura en el nivell de Vitamina C?
+
+- Es possible que l'efecte de la setmana en que es pren la mesura tipus de tractament en el nivell de Vitamina C canvii depenent del tipus de tractament?
+
+- Quin tractament manté un nivell de Vitamina C més alt a la llarga?
+
+
+<br>
+**4) Assuming that at the moment of packaging all the juices had the same Vitamin C level, define a linear model to see if the three conservation methods lose the vitamin C in a similar way. That is if statistically $\gamma_1 = \gamma_2 = \gamma_3$. From this model,**
+ 
+- **Compute the $\gamma_i$ estimations.** 
+
+- **Are the three $\gamma_i$ statically different or not?**
+
+
+Tenim que $log(VitaminaC) = log(\alpha_i)-\gamma_isetmana$, i defimin el model lineal ANCOVA amb interacció entre les variables tractament i setmana com:
+$$y_{ij} = \beta_0 + \tau_{i} + \beta_1 setmana  + (\tau_{i}\sim\beta_1)setmana  + e_{ij}$$
+Tenint en compte que agafem com a baseline el tractament 'a' i per tant $\tau_0 = 0$.
+
+<br>
+
+Tenim $y_{ij} = \beta_0 + \tau_{i} + (\beta_1 + (\tau_{i}\sim\beta_1))setmana  + e_{ij}$, Per tant a l'hora d'interpretar-ho i relacionar-ho amb la fórmula $log(VitaminaC) = log(\alpha_i)-\gamma_isetmana$:
+
+$y_{ij}$ és el log(VitaminaC) de la mostra j del tractament i. Llavors $\beta_0 + \tau_{i}$ correspon a $log(\alpha_i)$ i $\beta_1 + (\tau_{i}\sim\beta_1)$ correspon a $-\gamma_i$.
+
+<br>
+
+Hem de veure si amb els tres tractaments es perd la Vitamina C de forma similar, és a dir, si no hi ha interacció (el pas de les setmanes afecta igual en qualsevol dels tractaments i les rectes són paral·leles).
+
+En el nostre cas si no hi ha interacció $y_{ij} = \beta_0 + \tau_{i} + \beta_1setmana  + e_{ij}$  i per tant $-\gamma_i = \beta_1, \forall i$, com diu l'enunciat serien totes iguals.
+
+
+<br>
+ 
+Primer comparem els tractaments b i c, ja que sembla pel que hem vist a l'estadística descriptiva que la interacció será insignificativa:
+
+```{r}
+m1 <- lm(logVitC~Tipus_tractament + Setmana + Tipus_tractament:Setmana, dades[dades$Tipus_tractament!= 'a',])
+summary(m1)
+```
+```{r}
+Anova(m1,ty=3)
+```
+
+Tant mirant el summary com la taula Anova ens surt que la interacció i el tractament no són significants, probablement el tractament no ho és pel terme d'interacció. Si la interacció no és significant i l'estimador $(\tau_{i}\sim\beta_1)$ és 0, això vol dir que el pas de les setmanes afecta igual als tractaments b i c.
+
+
+Tornem a fer el model però sense interacció:
+
+```{r}
+m2 <- lm(logVitC~Tipus_tractament + Setmana, dades[dades$Tipus_tractament!= 'a',])
+summary(m2)
+```
+Ara ens surt que amdues variables explicatòries són sifnificants i l'estimador del $\gamma_i = -\beta_1 = 0.13588$ $i\in\{2,3\}$. I són estadísticament iguals.
+
+
+Ara comparem els 3 tractaments per veure si la interacció també és insignificant quan també tenim en compte le tractament 'a'.
+
+```{r}
+m3 <- lm(logVitC~Tipus_tractament + Setmana + Tipus_tractament:Setmana, dades)
+summary(m3)
+```
+
+<br>
+
+```{r}
+Anova(m3,ty=3)
+```
+En aquest cas ens surt que la interacció és significativa, és a dir que en el tractament a el pas de les setmanes te un efecte diferent en el tractament a, la recta no és paral·lela a les altres dues. Per tant no es compleix que $\gamma_1 = \gamma_2 = \gamma_3$, ja que la $\gamma_1$ és estadísticament diferent. 
+
+En conclusió, tenim que l'estimador de $\gamma_1 = -\beta_1 = 0.078986$ i en canvi els altres aquí ens donen $\gamma_2 = -(\beta_1 + (\tau_{2}\sim\beta_1))= 0.078986 +0.058055 = 0.137041$  i $\gamma_3 = -(\beta_1 + (\tau_{3}\sim\beta_19)= 0.078986 +0.055731 = 0.134717$. 
+
+Aquestes dues últimes com hem vist fent el model anterior són estadísticament iguals. La única estadísticament diferent és la $\gamma_1$.
+
+
+<br>
+
+
+**5)Define a linear model appropiate to check if at the moment of packaging, the juices of the three treatments had the same vitamin C level. From this model:**
+
+- **for each treatment, estimate the vitamin C level at the packaging moment, that is at Setmana = 0.**
+
+- **Are they statistically different at Setmana = 0 or not?**
+
+Si la setmana és 0, $log(VitaminaC) = log(\alpha_i)$, i  el model lineal ANCOVA definit anteriorment:$y_{ij} = \beta_0 + \tau_{i} + e_{ij}$. 
+
+Com hem vist en l'apartat anterior les $\tau_{i}$ no són significants, són estadísticament iguals a 0, per tant $y_{ij} = \beta_0+ e_{ij}$ Per tant l'estimació del logVitC per a tots els models és estadísticament igual i és $\beta_0 = 3.874678$ i per tant:
+
+```{r}
+exp(3.874678)
+```
+
+
+Per a comprovar-ho mirem:
+
+
+```{r}
+emm3<- emmeans(m3,~Tipus_tractament|Setmana, at=list(Setmana=c(0))) 
+emm3
+```
+L'estimació de log(Vitamina C) a la setmana 0 del tractament 'a' és 3.87, del 'b' és 3.86 i del 'c' és 3.99. Per tant els nivells de Vitamina son en aquest ordre:
+
+```{r}
+exp(3.87)
+exp(3.86)
+exp(3.99)
+```
+
+
+
+```{r}
+cld(emm3,Letters=letters, reversed=T)
+```
+Tenint en compte això confirmem que el valor de Vitamina C a la setmana 0 en les mostres tractades amb diferents mètodes son estadísticament iguals.
+
+
+<br>
+**6)Find out a linear model useful to fit the data and that verifies the general assumptions of the linear model, and answer the following questions: i) which is the variance estimation? ii) which is the amount of variability explained by your model?**
+
+El model que triem és el model lineal ANCOVA amb interacció entre les variables tractament i setmana:
+$$y_{ij} = \beta_0 + \tau_{i} + \beta_1 setmana  + (\tau_{i}\sim\beta_1)setmana  + e_{ij}$$
+
+```{r}
+m3 <- lm(logVitC~ Tipus_tractament + Setmana + Tipus_tractament:Setmana, dades)
+summary(m3)
+```
+
+Tot i que el tipus de tractament sigui insignificatiu, si que és significatiu com depenent d'aquest la setmana en que es mesura fa variar el nivell de Vitamina C. Aquest model té una Multiple R-squared i una Adjusted R-squared més altes  que el model sense aquesta variable i per tant hem decidit que és millor deixar-la.
+
+L'estimació de la variància és $\hat{\sigma^2}=(0.1416)^2 =0.02$.
+
+La quantitat de variabilitat explicada pel model és el 91.47% d'aquesta. 
+
+Ara comprovem que es verifiquen les hipòtesis generals dels models lineals:
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(m3,ask=F)
+```
+
+Acceptem la hipòtesi de normalitat, de linealitat i independència.
+No veiem cap observació que superi la distància de cook, per tant no hi ha outliers.
+
+
+```{r}
+plot(fitted(m3),resid(m3))
+```
+
+No es veu clar que la variança sigui constant, ja que veiem que com més nivell de Vitamina C menys variança.
+Hem fet més tests per comprovar-ho.
+
+
+```{r}
+shapiro.test(residuals(m3))
+```
+
+Aquest test comprova que les dades provenen d'una normal, la hipòtesi nula és que les dades són normals. Com que p-valor>0.05 no la rebutgem.
+
+
+```{r}
+library(lmtest)
+resettest(m3)
+```
+
+La hipòtesi nula és que les variables es relacionen de forma lineal. Com que p-valor>0.05 no la rebutgem.
+
+
+```{r}
+bptest(m3)
+```
+
+Aquets test ens demostra que la variança no és constant en el nostre model, no hi ha homoscedasticitat. Hem intentat canviar la variable resposta (log,loglog,sqrt,invers,exp...) però no hem trobat un model on es compleixin totes les hipòtesis amb aquests canvis.
+
+
+<br>
+
+**7) Write down the main conclusions that you may deduce from your model (aprox. half a page). In particular answer the questions specified in point3).**
+
+Del nostre model extraiem les següents conlcusions:
+
+
+La setmana en que es fa la mesura si que té una influencia sobre el nivell de VitaminaC resultant, amb el pas de les setmanes en nivell disminueix. 
+
+El tipus de tractament no té una influència directament en el Nivell de vitaminaC mesurat , sino que fa canviar l'efecte del pas de les setmanes en el nivell de Vitamina C. 
+
+Hem comprovat que tots els experiments van començar amb el mateix nivell de VitaminaC, en concret tenint en compte que hem fet el model sobre la fórmula $log(VitaminaC) = log(\alpha_i) + \gamma_isetmana$ sabem que $\alpha_i$és estadísitcament igual per tots els tractaments i val 48.167.
+
+Per cada setmana que passa en aquell model el logarítme de la Vitamina C disminueix $\gamma_i$ unitats. En termes de Vitamina C, el nivell en una setmana és igual al nivell de la setmana anterior multiplicat per $e^{-\gamma_i}$. Tenim $\gamma_1 = 0.0789$ i $\gamma_i = 0.1350$ $i \in\{2,3\}$.Per tant concluim que amb el tractament 'b' i 'c' el nivell de vitamina C descendeix més ràpid amb el pás del temps.
+
+
+Al cap de les dotze setmanes els nivells de Vitamina C amb els tractaments 'b' i 'c' són estadísticament iguals (aprox 9.92). En canvi amb el tractament 'a' queda un nivell de Vitamina C superior (18.72).
+
+
+Ho comprovem:
+```{r}
+emm3<- emmeans(m3,~Tipus_tractament|Setmana, at=list(Setmana=c(12))) 
+emm3
+```
+```{r}
+cld(emm3,Letters=letters, reversed=T)
+```
+
+
+
+
+
+
